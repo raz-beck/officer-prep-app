@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>מיוני קצונה - למידה חכמה</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #27ae60;
+            --accent: #e67e22;
+            --error: #e74c3c;
+            --bg: #f4f7f6;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg); 
+            margin: 0; 
+            padding: 15px; 
+            color: #333; 
+            line-height: 1.6;
+            -webkit-user-select: none; /* מניעת העתקת טקסט בטעות באייפון */
+        }
+        .card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); margin-bottom: 20px; border: 1px solid #eee; }
+        h1 { color: var(--primary); text-align: center; font-size: 26px; margin-top: 20px; margin-bottom: 20px; }
+        
+        .progress-container { background: #eee; border-radius: 10px; height: 10px; margin: 15px 0; overflow: hidden; }
+        .progress-bar { background: linear-gradient(90deg, var(--secondary), #2ecc71); height: 100%; width: 0%; transition: width 0.4s ease; }
+        
+        .btn { display: block; width: 100%; padding: 18px; margin: 12px 0; border: none; border-radius: 15px; background: var(--primary); color: white; font-size: 18px; font-weight: bold; cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+        .btn:active { transform: scale(0.96); opacity: 0.9; }
+        
+        .option { display: block; background: #fff; border: 2px solid #e9ecef; padding: 18px; margin: 10px 0; border-radius: 15px; cursor: pointer; transition: all 0.2s; font-size: 17px; -webkit-tap-highlight-color: transparent; }
+        .option:active { background: #f8f9fa; }
+        .option.correct { background-color: #d4edda !important; border-color: var(--secondary) !important; color: #155724; }
+        .option.wrong { background-color: #f8d7da !important; border-color: var(--error) !important; color: #721c24; }
+        
+        #feedback { text-align: center; font-weight: bold; margin-top: 15px; min-height: 30px; font-size: 18px; }
+        .hidden { display: none; }
+        .stats { font-size: 14px; text-align: center; color: #7f8c8d; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>🇮🇱 הכנה לקצונה</h1>
+    
+    <div id="mainMenu">
+        <div class="card">
+            <h3>תרגול מלא (30 שאלות)</h3>
+            <p>השאלות יופיעו בסדר אקראי וללא חזרות. בסוף תקבלי ציון סופי.</p>
+            <button class="btn" onclick="startQuiz()">התחילי עכשיו</button>
+        </div>
+    </div>
+
+    <div id="quizArea" class="hidden">
+        <div class="card">
+            <div id="qCount" class="stats">שאלה ...</div>
+            <div class="progress-container"><div class="progress-bar" id="pBar"></div></div>
+            
+            <h3 id="qText">טוען...</h3>
+            <div id="optionsContainer"></div>
+            
+            <div id="feedback"></div>
+            <button id="nextBtn" class="btn hidden" style="background: var(--secondary);" onclick="loadNextQuestion()">לשאלה הבאה ➔</button>
+            <button class="btn" style="background: #95a5a6; font-size: 14px; padding: 10px; margin-top: 20px;" onclick="goToMenu()">חזור לתפריט</button>
+        </div>
+    </div>
+
+    <div id="summaryArea" class="hidden">
+        <div class="card" style="text-align: center;">
+            <h2>סיימת את הסבב! 🎖️</h2>
+            <div id="finalScore" style="font-size: 40px; margin: 20px 0; font-weight: bold; color: var(--secondary);"></div>
+            <p>כל הכבוד על ההתמדה. רוצה לנסות שוב?</p>
+            <button class="btn" onclick="startQuiz()">סיבוב חדש (סדר שונה)</button>
+            <button class="btn" style="background: #95a5a6;" onclick="goToMenu()">חזרה למסך הראשי</button>
+        </div>
+    </div>
+
+    <script>
+        const allQuestions = [
+            { q: "מי נחשב לחוזה המדינה?", options: ["בן גוריון", "הרצל", "ז'בוטינסקי", "ויצמן"], correct: 1 },
+            { q: "באיזו שנה התקיים הקונגרס הציוני הראשון?", options: ["1882", "1897", "1903", "1917"], correct: 1 },
+            { q: "מי היה נשיא המדינה הראשון?", options: ["חיים ויצמן", "יצחק בן צבי", "זלמן שזר", "עזר ויצמן"], correct: 0 },
+            { q: "באיזו שנה פרצה מלחמת ששת הימים?", options: ["1948", "1956", "1967", "1973"], correct: 2 },
+            { q: "מי היה הרמטכ\"ל במלחמת יום הכיפורים?", options: ["משה דיין", "יצחק רבין", "דוד אלעזר (דדו)", "חיים בר-לב"], correct: 2 },
+            { q: "מהן שלוש הרשויות בישראל?", options: ["כנסת, ממשלה, צבא", "מחוקקת, מבצעת, שופטת", "משטרה, כנסת, בתי משפט", "נשיא, כנסת, ממשלה"], correct: 1 },
+            { q: "כמה חברי כנסת יש בישראל?", options: ["100", "120", "110", "150"], correct: 1 },
+            { q: "באיזו שנה נחתם הסכם השלום עם מצרים?", options: ["1967", "1973", "1979", "1994"], correct: 2 },
+            { q: "מהו הנהר הארוך ביותר בישראל?", options: ["ירקון", "קישון", "ירדן", "בניאס"], correct: 2 },
+            { q: "מי היה המרגל הישראלי בדמשק?", options: ["אלי כהן", "יונתן פולארד", "איסר הראל", "מאיר דגן"], correct: 0 },
+            { q: "מהו ערך 'טוהר הנשק'?", options: ["שמירה על נשק נקי", "שימוש בנשק רק למשימה תוך שמירה על צלם אנוש", "איסור שימוש בשבת", "נשיאה רק באישור"], correct: 1 },
+            { q: "איזו עיר מכונה 'בירת הנגב'?", options: ["אילת", "דימונה", "מצפה רמון", "באר שבע"], correct: 3 },
+            { q: "מי הייתה ראש הממשלה האישה הראשונה?", options: ["גולדה מאיר", "ציפי לבני", "שלי יחימוביץ'", "מרים פיירברג"], correct: 0 },
+            { q: "מהו 'חוק השבות'?", options: ["חוק גיוס", "חוק המאפשר לכל יהודי לעלות", "חוק השבת", "חוק גבולות 67"], correct: 1 },
+            { q: "איפה קבור דוד בן גוריון?", options: ["תל אביב", "ירושלים", "שדה בוקר", "חולון"], correct: 2 },
+            { q: "מהו ההר הגבוה בישראל?", options: ["תבור", "חרמון", "מירון", "כרמל"], correct: 1 },
+            { q: "באיזו יבשת נמצאת ישראל?", options: ["אירופה", "אסיה", "אפריקה", "אוסטרליה"], correct: 1 },
+            { q: "מהו דגל שחור מעל פקודה?", options: ["פקודה קשה", "פקודה בלתי חוקית בעליל", "פקודה סודית", "פקודה של רמטכ\"ל"], correct: 1 },
+            { q: "מי חיבר את המנון התקווה?", options: ["ביאליק", "נעמי שמר", "נפתלי הרץ אימבר", "אייל גולן"], correct: 2 },
+            { q: "מהו מבצע יונתן?", options: ["מלחמת לבנון", "חילוץ אנטבה", "מבצע בסיני", "חיסול כור"], correct: 1 },
+            { q: "מי בוחר את נשיא המדינה?", options: ["העם", "הממשלה", "הכנסת", "הצבא"], correct: 2 },
+            { q: "באיזה תאריך הוקמה המדינה?", options: ["14 במאי 1948", "29 בנובמבר 1947", "1 בינואר 1950", "15 במאי 1948"], correct: 0 },
+            { q: "מי היה הרמטכ\"ל הראשון?", options: ["יעקב דורי", "משה דיין", "יצחק רבין", "יגאל ידין"], correct: 0 },
+            { q: "עם מי נחתמו 'הסכמי אברהם'?", options: ["מצרים", "ירדן", "איחוד האמירויות ובחריין", "סוריה"], correct: 2 },
+            { q: "מהו ערך הרעות?", options: ["עזרה בבית", "מחויבות לחבר ליחידה", "ציות", "כושר גופני"], correct: 1 },
+            { q: "איזה חיל אחראי על העורף?", options: ["חיל האוויר", "פיקוד העורף", "חיל הים", "חיל קשר"], correct: 1 },
+            { q: "מהי דרגת קצין ראשונה?", options: ["סגן", "סג\"ם", "סרן", "רס\"ן"], correct: 1 },
+            { q: "מי היה שר הביטחון ב-67?", options: ["בן גוריון", "משה דיין", "אריאל שרון", "אביגדור ליברמן"], correct: 1 },
+            { q: "מהי 'ממשלת מעבר'?", options: ["ממשלה זמנית עד בחירות", "ממשלה שעוברת מקום", "ממשלת חירום", "ממשלה צרה"], correct: 0 },
+            { q: "איפה נמצאת הכנסת?", options: ["תל אביב", "חיפה", "ירושלים", "קיסריה"], correct: 2 }
+        ];
+
+        let shuffledQuestions = [];
+        let currentIndex = 0;
+        let score = 0;
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function startQuiz() {
+            shuffledQuestions = shuffle([...allQuestions]);
+            currentIndex = 0;
+            score = 0;
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('summaryArea').classList.add('hidden');
+            document.getElementById('quizArea').classList.remove('hidden');
+            loadNextQuestion();
+        }
+
+        function loadNextQuestion() {
+            if (currentIndex >= shuffledQuestions.length) {
+                showSummary();
+                return;
+            }
+
+            const q = shuffledQuestions[currentIndex];
+            document.getElementById('qText').innerText = q.q;
+            document.getElementById('qCount').innerText = `שאלה ${currentIndex + 1} מתוך ${shuffledQuestions.length}`;
+            document.getElementById('feedback').innerText = "";
+            document.getElementById('nextBtn').classList.add('hidden');
+            
+            const container = document.getElementById('optionsContainer');
+            container.innerHTML = "";
+            
+            q.options.forEach((opt, i) => {
+                const div = document.createElement('div');
+                div.className = 'option';
+                div.innerText = opt;
+                div.onclick = () => checkAnswer(i, q.correct, div);
+                container.appendChild(div);
+            });
+            
+            updateProgressBar();
+        }
+
+        function checkAnswer(selected, correct, element) {
+            const options = document.querySelectorAll('.option');
+            options.forEach(o => o.onclick = null);
+
+            if (selected === correct) {
+                element.classList.add('correct');
+                document.getElementById('feedback').innerHTML = "✅ נכון מאוד!";
+                score++;
+            } else {
+                element.classList.add('wrong');
+                options[correct].classList.add('correct');
+                document.getElementById('feedback').innerHTML = "❌ לא נכון";
+            }
+            
+            currentIndex++;
+            document.getElementById('nextBtn').classList.remove('hidden');
+        }
+
+        function updateProgressBar() {
+            const progress = (currentIndex / shuffledQuestions.length) * 100;
+            document.getElementById('pBar').style.width = progress + '%';
+        }
+
+        function showSummary() {
+            document.getElementById('quizArea').classList.add('hidden');
+            document.getElementById('summaryArea').classList.remove('hidden');
+            document.getElementById('finalScore').innerText = `${score} / ${allQuestions.length}`;
+        }
+
+        function goToMenu() {
+            document.getElementById('mainMenu').classList.remove('hidden');
+            document.getElementById('quizArea').classList.add('hidden');
+            document.getElementById('summaryArea').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
